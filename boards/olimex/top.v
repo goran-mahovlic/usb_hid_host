@@ -36,8 +36,8 @@ wire usb_report, usb_conerr, game_l, game_r, game_u, game_d, game_a, game_b, gam
 wire game_sel, game_sta;
 wire usb_oe, usb_dm_i, usb_dp_i, usb_dm_o, usb_dp_o;
 
-assign usb_fpga_pu_dn = 1'b0; // host pull down 10k
-assign usb_fpga_pu_dp = 1'b0; // host pull down 10k
+assign usb1_fpga_pu_dn = 1'b0; // host pull down 10k
+assign usb1_fpga_pu_dp = 1'b0; // host pull down 10k
 
 /* PLL for 12MHz USB */
 pll12 pll_inst_usb (
@@ -49,8 +49,8 @@ pll12 pll_inst_usb (
 
 usb_hid_host usb (
     .usbclk(clk_usb), .usbrst_n(sys_resetn),
-    .usb_dm(usb_fpga_bd_dn),
-    .usb_dp(usb_fpga_bd_dp),
+    .usb_dm(usb1_fpga_bd_dn),
+    .usb_dp(usb1_fpga_bd_dp),
     /*
     .usb_oe(usb_oe),
     .usb_dm_i(usb_dm_i), .usb_dp_i(usb_dp_i),
@@ -66,10 +66,10 @@ usb_hid_host usb (
     .conerr(usb_conerr), .dbg_hid_report(hid_report)
 );
 /*
-assign usb_dm_i = usb_fpga_bd_dn;
-assign usb_dp_i = usb_fpga_bd_dp;
-assign usb_fpga_bd_dn = usb_oe ? usb_dm_o : 1'bZ;
-assign usb_fpga_bd_dp = usb_oe ? usb_dp_o : 1'bZ;
+assign usb_dm_i = usb1_fpga_bd_dn;
+assign usb_dp_i = usb1_fpga_bd_dp;
+assign usb1_fpga_bd_dn = usb_oe ? usb_dm_o : 1'bZ;
+assign usb1_fpga_bd_dp = usb_oe ? usb_dp_o : 1'bZ;
 */
 
 /*
