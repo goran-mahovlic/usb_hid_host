@@ -25,7 +25,7 @@ module top (
     output usb1_fpga_pu_dp
 );
 
-wire sys_resetn = ~rstn_i;
+wire sys_resetn = rstn_i;
 wire clk_usb, lock_usb;
 wire [1:0] usb_type;
 wire [7:0] key_modifiers, key1, key2, key3, key4;
@@ -42,7 +42,7 @@ assign usb1_fpga_pu_dp = 1'b0; // host pull down 10k
 /* PLL for 12MHz USB */
 pll12 pll_inst_usb (
     .clock_in(clk_i), // 10 MHz
-    .rst_in(~rstn_i),
+    .rst_in(rstn_i),
     .clock_out(clk_usb), // 12 MHz, 0 deg
     .locked(lock_usb)
 );
