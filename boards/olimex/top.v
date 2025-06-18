@@ -3,7 +3,12 @@
 // based on the icesugar-pro example by nand2mario, 8/2023
 //
 
-module top (
+module top 
+#(
+    parameter C_report_bytes = 64, // 8:usual gamepad, 20:xbox360
+    parameter C_disp_bits=128,
+)
+(
     input clk_i,
 
     // UART
@@ -12,6 +17,13 @@ module top (
 
     // BUTTONs
     input rstn_i,
+
+    output [3:0] o_r,
+    output [3:0] o_g,
+    output [3:0] o_b,
+    output o_vsync,
+    output o_hsync,
+    output [7:0] o_led,
 
     // LEDs
     output o_led_D1,
@@ -26,7 +38,7 @@ module top (
 );
 
 wire sys_resetn = rstn_i;
-wire clk_usb, lock_usb;
+wire clk_usb, clk_pix, lock_usb, lock_pix;
 wire [1:0] usb_type;
 wire [7:0] key_modifiers, key1, key2, key3, key4;
 wire [7:0] mouse_btn;
@@ -35,6 +47,10 @@ wire [63:0] hid_report;
 wire usb_report, usb_conerr, game_l, game_r, game_u, game_d, game_a, game_b, game_x, game_y;
 wire game_sel, game_sta;
 wire usb_oe, usb_dm_i, usb_dp_i, usb_dm_o, usb_dp_o;
+
+wire [2:0] S_valid;
+wire [C_report_bytes*8-1:0] S_report[0:2];
+reg  [C_disp_bits-1:0] R_display;
 
 assign usb1_fpga_pu_dn = 1'b0; // host pull down 10k
 assign usb1_fpga_pu_dp = 1'b0; // host pull down 10k
@@ -45,6 +61,12 @@ pll12 pll_inst_usb (
     .rst_in(rstn_i),
     .clock_out(clk_usb), // 12 MHz, 0 deg
     .locked(lock_usb)
+);
+
+pll25 pll_inst_pix (
+    .clock_in(clk_i),       //  10 MHz reference
+    .clock_out(clk_pix),    //  25 MHz, 0 deg
+    .locked(lock_pix)
 );
 
 usb_hid_host usb (
@@ -83,6 +105,57 @@ hid_printer prt (
     .game_sel(game_sel), .game_sta(game_sta)
 );
 */
+
+parameter C_color_bits = 16; 
+
+wire [9:0] x;
+wire [9:0] y;
+// for reverse screen:
+wire [9:0] rx = 636-x;
+wire [C_color_bits-1:0] color;
+hex_decoder_v
+#(
+    .c_data_len(C_disp_bits),
+    .c_row_bits(4), // 2**n digits per row (4*2**n bits/row) 3->32, 4->64, 5->128, 6->256 
+    .c_grid_6x8(0), // NOTE: TRELLIS needs -abc9 option to compile
+    .c_font_file("hex_font.mem"),
+    //.c_x_bits(8),
+    //.c_y_bits(4),
+    .c_color_bits(C_color_bits)
+)
+hex_decoder_v_inst
+(
+    .clk(clk_pix),
+    .data(hid_report),
+    .x(rx[9:2]),
+    .y(y[5:2]),
+    .color(color)
+);
+
+assign o_r = color[15:12];
+assign o_g = color[10:7];
+assign o_b = color[4:1];
+
+// VGA signal generator
+wire [7:0] vga_r, vga_g, vga_b;
+assign vga_r = {color[15:11],color[11],color[11],color[11]};
+assign vga_g = {color[10:5],color[5],color[5]};
+assign vga_b = {color[4:0],color[0],color[0],color[0]};
+
+wire vga_hsync, vga_vsync, vga_blank;
+
+vga
+vga_instance
+(
+.clk_pixel(clk_pix),
+.clk_pixel_ena(1'b1),
+.test_picture(1'b0), // enable test picture generation
+.beam_x(x),
+.beam_y(y),
+.vga_hsync(o_hsync),
+.vga_vsync(o_vsync),
+.vga_blank(vga_blank)
+);
 
 reg [6:0] report_counter;      // blinks whenever there's a report
 always @(posedge clk_usb)
